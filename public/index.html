@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيقنا الخاص ❤️</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #fdf2f4; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #d63384; text-align: center; }
+        input, textarea { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { background: #d63384; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { background: #b02a6b; }
+        .hidden { display: none; }
+        .tab-btn { background: #6c757d; margin: 2px; width: 32%; display: inline-block; }
+        .chat-box { height: 200px; border: 1px solid #eee; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #fafafa; border-radius: 6px; }
+        .card { background: #fff0f3; padding: 10px; margin: 10px 0; border-radius: 6px; border-right: 4px solid #d63384; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- قسم الدخول والتسجيل -->
+    <div id="auth-section">
+        <h2>تسجيل الدخول / حساب جديد</h2>
+        <input type="text" id="username" placeholder="اسم المستخدم">
+        <input type="password" id="password" placeholder="كلمة المرور">
+        <button onclick="login()">تسجيل الدخول</button>
+        <button onclick="register()" style="background: #6c757d; margin-top: 10px;">إنشاء حساب جديد</button>
+        <p id="auth-msg" style="color: red; text-align: center;"></p>
+    </div>
+
+    <!-- قسم التطبيق الرئيسي -->
+    <div id="app-section" class="hidden">
+        <h2>مرحباً بك يا <span id="current-user"></span> ❤️</h2>
+        <div>
+            <button class="tab-btn" onclick="switchTab('chat')">المراسلة</button>
+            <button class="tab-btn" onclick="switchTab('posts')">المنشورات</button>
+            <button class="tab-btn" onclick="switchTab('memories')">الذكريات</button>
+        </div>
+
+        <!-- تبويب المراسلة -->
+        <div id="tab-chat" class="tab-content">
+            <h3>الدردشة الخاصة</h3>
+            <div id="chat-messages" class="chat-box"></div>
+            <input type="text" id="chat-input" placeholder="اكتب رسالة...">
+            <button onclick="sendMessage()">إرسال</button>
+        </div>
+
+        <!-- تبويب المنشورات -->
+        <div id="tab-posts" class="tab-content hidden">
+            <h3>المنشورات واليوميات</h3>
+            <input type="text" id="post-title" placeholder="عنوان المنشور">
+            <textarea id="post-content" placeholder="ماذا تفكران اليوم؟"></textarea>
+            <button onclick="addPost('post')">نشر</button>
+            <div id="posts-list"></div>
+        </div>
+
+        <!-- تبويب الذكريات -->
+        <div id="tab-memories" class="tab-content hidden">
+            <h3>صندوق الذكريات</h3>
+            <input type="text" id="memory-title" placeholder="عنوان الذكرى الجميلة">
+            <textarea id="memory-content" placeholder="تفاصيل الذكرى..."></textarea>
+            <button onclick="addPost('memory')">إضافة ذكرى</button>
+            <div id="memories-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUser = '';
+
+    function register() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        }).then(res => res.json()).then(data => {
+            document.getElementById('auth-msg').innerText = data.message;
+            if(data.success) alert('تم إنشاء الحساب بنجاح، يمكنك تسجيل الدخول الآن.');
+        });
+    }
+
+    function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        }).then(res => res.json()).then(data => {
+            if(data.success) {
+                currentUser = data.user.username;
+                document.getElementById('current-user').innerText = currentUser;
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+                loadData();
+                setInterval(loadData, 3000); // تحديث دوري للرسائل
+            } else {
+                document.getElementById('auth-msg').innerText = data.message;
+            }
+        });
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById('tab-' + tab).classList.remove('hidden');
+    }
+
+    function loadData() {
+        fetch('/api/data').then(res => res.json()).then(data => {
+            // عرض الرسائل
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = data.messages.map(m => `<div><b>${m.sender}:</b> ${m.text} <span style="font-size:10px; color:#88; float:left;">${m.time}</span></div>`).join('');
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // عرض المنشورات
+            document.getElementById('posts-list').innerHTML = data.posts.map(p => `<div class="card"><h4>${p.title}</h4><p>${p.content}</p><small>بواسطة: ${p.author} - ${p.date}</small></div>`).reverse().join('');
+
+            // عرض الذكريات
+            document.getElementById('memories-list').innerHTML = data.memories.map(m => `<div class="card"><h4>✨ ${m.title}</h4><p>${m.content}</p><small>بواسطة: ${m.author} - ${m.date}</small></div>`).reverse().join('');
+        });
+    }
+
+    function sendMessage() {
+        const text = document.getElementById('chat-input').value;
+        if (!text) return;
+        fetch('/api/messages', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({sender: currentUser, text})
+        }).then(() => {
+            document.getElementById('chat-input').value = '';
+            loadData();
+        });
+    }
+
+    function addPost(type) {
+        const titleId = type === 'memory' ? 'memory-title' : 'post-title';
+        const contentId = type === 'memory' ? 'memory-content' : 'post-content';
+        const title = document.getElementById(titleId).value;
+        const content = document.getElementById(contentId).value;
+        if (!title || !content) return;
+
+        fetch('/api/posts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({author: currentUser, title, content, type})
+        }).then(() => {
+            document.getElementById(titleId).value = '';
+            document.getElementById(contentId).value = '';
+            loadData();
+        });
+    }
+</script>
+
+</body>
+</html>

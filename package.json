@@ -1,0 +1,12 @@
+{
+  "name": "private-couple-app",
+  "version": "1.0.0",
+  "description": "A private app for messaging, posts, and memories",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
